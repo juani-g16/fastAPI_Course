@@ -4,18 +4,18 @@ from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
 from sqlalchemy.orm import Session
 from ..database import get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
 # Getting all posts
-@router.get("/posts", response_model=List[schemas.ResponsePost])
+@router.get("/", response_model=List[schemas.ResponsePost])
 async def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     return posts
 
 
 # Getting a single post
-@router.get("/posts/{id}", response_model=schemas.ResponsePost)
+@router.get("/{id}", response_model=schemas.ResponsePost)
 async def get_post(id: int, response: Response, db: Session = Depends(get_db)):
     post = (
         db.query(models.Post).filter(models.Post.id == id).first()
@@ -30,7 +30,7 @@ async def get_post(id: int, response: Response, db: Session = Depends(get_db)):
 
 # Creating a post
 @router.post(
-    "/posts", status_code=status.HTTP_201_CREATED, response_model=schemas.ResponsePost
+    "/", status_code=status.HTTP_201_CREATED, response_model=schemas.ResponsePost
 )  # set a response model with the data we want the user to see
 async def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     new_post = models.Post(**post.model_dump())  # unpack the post dictionary
@@ -41,7 +41,7 @@ async def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
 
 
 # Deleting a post
-@router.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(id: int, db: Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == id)
 
@@ -58,7 +58,7 @@ async def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 # Update a post
-@router.put("/posts/{id}", response_model=schemas.ResponsePost)
+@router.put("/{id}", response_model=schemas.ResponsePost)
 async def update_posts(
     id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)
 ):
