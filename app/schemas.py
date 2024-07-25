@@ -1,5 +1,26 @@
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, EmailStr
+
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# validation of user login data
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 
 
 # schema validation using pydantic
@@ -15,24 +36,23 @@ class PostCreate(
     pass
 
 
-# A response model is defined
+# A response model is defined, derived from PostBase
 class ResponsePost(PostBase):
     id: int
     created_at: datetime
+    owner_id: int
+    owner: UserResponse
 
     class Config:
         orm_mode = True
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
+# validation of login token
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 
-class UserResponse(BaseModel):
-    id: int
-    email: EmailStr
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
+# validation of login token data
+class TokenData(BaseModel):
+    id: Optional[int] = None

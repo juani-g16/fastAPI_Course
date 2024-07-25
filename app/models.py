@@ -1,12 +1,13 @@
 from enum import unique
 from time import timezone
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.sql.expression import text
 from sqlalchemy.sql.sqltypes import TIMESTAMP
+from sqlalchemy.orm import relationship
 from .database import Base
 
 
-# the class Post defines the model our table is going to have
+# the class Post defines the model our posts table is going to have
 class Post(Base):
     __tablename__ = "posts"  # we must give a name to the table
     id = Column(Integer, primary_key=True, nullable=False)
@@ -16,8 +17,13 @@ class Post(Base):
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=text("now()")
     )
+    owner_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
 
+    owner = relationship("User")
 
+# the class User defines the model our users table is going to have
 class User(Base):
     __tablename__ = "users"
     email = Column(String, nullable=False, unique=True)

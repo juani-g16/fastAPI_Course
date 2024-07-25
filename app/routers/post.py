@@ -1,4 +1,6 @@
 from typing import List
+
+from app import oauth2
 from .. import models, schemas
 from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
 from sqlalchemy.orm import Session
@@ -9,22 +11,43 @@ router = APIRouter(prefix="/posts", tags=["Posts"])
 
 # Getting all posts
 @router.get("/", response_model=List[schemas.ResponsePost])
-async def get_posts(db: Session = Depends(get_db)):
+async def get_posts(
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
+):
     posts = db.query(models.Post).all()
+
+    """if the idea is only to show the current user's posts then:
+    posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()"""
+
     return posts
 
 
 # Getting a single post
 @router.get("/{id}", response_model=schemas.ResponsePost)
-async def get_post(id: int, response: Response, db: Session = Depends(get_db)):
+async def get_post(
+    id: int,
+    response: Response,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
+):
     post = (
         db.query(models.Post).filter(models.Post.id == id).first()
     )  # filter is like a where statement and stop looking on the first match
+
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"post with id: {id} was not found",
         )
+
+    """if the idea is only to show the current logged in user's post then:
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to perform requested action",
+        )
+    """
     return post
 
 
@@ -32,8 +55,14 @@ async def get_post(id: int, response: Response, db: Session = Depends(get_db)):
 @router.post(
     "/", status_code=status.HTTP_201_CREATED, response_model=schemas.ResponsePost
 )  # set a response model with the data we want the user to see
-async def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
-    new_post = models.Post(**post.model_dump())  # unpack the post dictionary
+async def create_posts(
+    post: schemas.PostCreate,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
+):
+    new_post = models.Post(
+        owner_id=current_user.id, **post.model_dump()
+    )  # unpack the post dictionary
     db.add(new_post)  # insert into db
     db.commit()  # commit like in psycopg
     db.refresh(new_post)  # like a SQL 'returning *' statement
@@ -42,16 +71,27 @@ async def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
 
 # Deleting a post
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_post(id: int, db: Session = Depends(get_db)):
-    post = db.query(models.Post).filter(models.Post.id == id)
+async def delete_post(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
+):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
 
-    if post.first() == None:
+    if post == None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"post with id: {id} was not found",
         )
 
-    post.delete(synchronize_session=False)
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to perform requested action",
+        )
+
+    post_query.delete(synchronize_session=False)
     db.commit()
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -60,7 +100,10 @@ async def delete_post(id: int, db: Session = Depends(get_db)):
 # Update a post
 @router.put("/{id}", response_model=schemas.ResponsePost)
 async def update_posts(
-    id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)
+    id: int,
+    updated_post: schemas.PostCreate,
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
 
     post_query = db.query(models.Post).filter(
@@ -72,6 +115,12 @@ async def update_posts(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"post with id: {id} was not found",
+        )
+
+    if post.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to perform requested action",
         )
 
     post_query.update(
