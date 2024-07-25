@@ -1,5 +1,4 @@
-from typing import List
-
+from typing import List, Optional
 from app import oauth2
 from .. import models, schemas
 from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
@@ -14,8 +13,17 @@ router = APIRouter(prefix="/posts", tags=["Posts"])
 async def get_posts(
     db: Session = Depends(get_db),
     current_user: int = Depends(oauth2.get_current_user),
+    limit: int = 10,
+    skip: int = 0,
+    search: Optional[str] = "",
 ):
-    posts = db.query(models.Post).all()
+    posts = (
+        db.query(models.Post)
+        .filter(models.Post.title.contains(search))
+        .limit(limit)
+        .offset(skip)
+        .all()
+    )
 
     """if the idea is only to show the current user's posts then:
     posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()"""
