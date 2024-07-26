@@ -1,4 +1,3 @@
-from enum import unique
 from time import timezone
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.sql.expression import text
