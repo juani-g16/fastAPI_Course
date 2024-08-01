@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, EmailStr
 
@@ -42,6 +43,13 @@ class ResponsePost(PostBase):
     created_at: datetime
     owner_id: int
     owner: UserResponse
+    class Config:
+        from_attributes = True
+
+
+class PostOut(BaseModel):
+    Post: ResponsePost
+    votes: int
 
     class Config:
         from_attributes = True
@@ -56,3 +64,13 @@ class Token(BaseModel):
 # validation of login token data
 class TokenData(BaseModel):
     id: Optional[int] = None
+
+
+# Validation for voting system
+class Vote(BaseModel):
+    class votedir(Enum):
+        add_vote: int = 1
+        sub_vote: int = 0
+
+    post_id: int
+    dir: votedir
