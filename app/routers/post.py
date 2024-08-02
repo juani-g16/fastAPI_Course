@@ -1,15 +1,16 @@
 from typing import List, Optional
 from app import oauth2
 from .. import models, schemas
-from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
+from fastapi import Response, status, HTTPException, Depends, APIRouter
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..database import get_db
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
 # Getting all posts
-@router.get("/", response_model=List[schemas.ResponsePost])
+@router.get("/", response_model=List[schemas.PostOut])
 async def get_posts(
     db: Session = Depends(get_db),
     current_user: int = Depends(oauth2.get_current_user),
@@ -17,22 +18,22 @@ async def get_posts(
     skip: int = 0,
     search: Optional[str] = "",
 ):
+    # query with number of votes
     posts = (
-        db.query(models.Post)
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
         .filter(models.Post.title.contains(search))
         .limit(limit)
         .offset(skip)
         .all()
     )
 
-    """if the idea is only to show the current user's posts then:
-    posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()"""
-
     return posts
 
 
 # Getting a single post
-@router.get("/{id}", response_model=schemas.ResponsePost)
+@router.get("/{id}", response_model=schemas.PostOut)
 async def get_post(
     id: int,
     response: Response,
@@ -40,8 +41,12 @@ async def get_post(
     current_user: int = Depends(oauth2.get_current_user),
 ):
     post = (
-        db.query(models.Post).filter(models.Post.id == id).first()
-    )  # filter is like a where statement and stop looking on the first match
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
+        .filter(models.Post.id == id)
+        .first()
+    )
 
     if not post:
         raise HTTPException(
@@ -49,13 +54,6 @@ async def get_post(
             detail=f"post with id: {id} was not found",
         )
 
-    """if the idea is only to show the current logged in user's post then:
-    if post.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Unauthorized to perform requested action",
-        )
-    """
     return post
 
 

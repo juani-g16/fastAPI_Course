@@ -23,19 +23,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-# In case we wish to use a plain SQL instead of an ORM
-""" while True:
-    try:
-        conn = psycopg2.connect(host='localhost',
-                            database='fastapi',
-                            user='postgres',
-                            password='juanito16',
-                            cursor_factory=RealDictCursor)
-        cursor = conn.cursor()
-        print("Database connection successful")
-        break
-    except Exception as error:
-        print("Connecting to database failed")
-        print("Error: ", error)
-        time.sleep(2) """
