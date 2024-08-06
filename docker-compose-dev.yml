@@ -1,0 +1,31 @@
+services:
+    api:
+        command: bash -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+        build: .
+        depends_on:
+            - postgres
+        ports: 
+            - 8000:8000
+        # env_file:
+        #     - ./.env
+        environment:
+            - DB_HOSTNAME=postgres
+            - DB_PORT=5432
+            - DB_PASSWORD=juanito16
+            - DB_NAME=fastapi
+            - DB_USERNAME=postgres
+            - SECRET_KEY=14a6576f80bdf6374d493772a3a326f3ebe2c33a03ea29a47c6b098d67da56b0
+            - ALGORITHM=HS256
+            - ACCESS_TOKEN_EXPIRE_MINUTES=30
+        volumes:
+            - ./:/usr/src/app:ro
+    postgres:
+      image:  postgres
+      environment:
+        - POSTGRES_PASSWORD=juanito16
+        - POSTGRES_DB=fastapi
+      volumes:
+          - postgres-db:/var/lib/postgresql/data
+
+volumes:
+  postgres-db:
